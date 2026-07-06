@@ -421,7 +421,7 @@ Com seus dados a liderança controla os guerreiros, monta a escalação certa e 
 
         <div class="field">
           <label for="zap">📱 WhatsApp</label>
-          <input id="zap" name="zap" type="tel" placeholder="(11) 91234-5678" required inputmode="tel" autocomplete="tel" minlength="10">
+          <input id="zap" name="zap" type="tel" placeholder="(11) 91234-5678 ou +351..." required inputmode="tel" autocomplete="tel" minlength="8">
         </div>
 
         <div class="field">
@@ -593,13 +593,21 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
       cvSel.appendChild(op);
     }
 
-    // máscara de telefone BR
+    // máscara de telefone BR ou Internacional
     var zap = document.getElementById("zap");
     zap.addEventListener("input", function () {
-      var v = this.value.replace(/\D/g, "").slice(0, 11);
-      if (v.length > 6)      this.value = "(" + v.slice(0,2) + ") " + v.slice(2, v.length-4) + "-" + v.slice(-4);
-      else if (v.length > 2) this.value = "(" + v.slice(0,2) + ") " + v.slice(2);
-      else if (v.length > 0) this.value = "(" + v;
+      var isIntl = this.value.startsWith("+");
+      var v = this.value.replace(/\D/g, "");
+      
+      if (isIntl) {
+        this.value = "+" + v;
+      } else {
+        v = v.slice(0, 11);
+        if (v.length > 6)      this.value = "(" + v.slice(0,2) + ") " + v.slice(2, v.length-4) + "-" + v.slice(-4);
+        else if (v.length > 2) this.value = "(" + v.slice(0,2) + ") " + v.slice(2);
+        else if (v.length > 0) this.value = "(" + v;
+        else this.value = "";
+      }
     });
 
     // ---- máquina de cenas com efeito de digitação AUTOMÁTICO ----
