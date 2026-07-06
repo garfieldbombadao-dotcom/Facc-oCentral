@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Facção Central — Alistamento do Clã</title>
+<meta name="description" content="Aliste-se na Facção Central (FAC1) — clã competitivo de Clash of Clans. Guerra ativa, doação voando e zero frescura.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
@@ -32,6 +33,46 @@
     flex-direction:column;
     align-items:center;
     padding:26px 14px 60px;
+  }
+
+  /* overlay de ativação de som */
+  .sound-overlay{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    background:rgba(0,0,0,.92);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    cursor:pointer;
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    transition:opacity .5s;
+  }
+  .sound-overlay.hide{
+    opacity:0;
+    pointer-events:none;
+  }
+  .sound-overlay .tap-icon{
+    font-size:64px;
+    animation:pulse-icon 1.6s ease-in-out infinite;
+  }
+  .sound-overlay .tap-text{
+    font-family:'Lilita One',cursive;
+    font-size:22px;
+    color:var(--gold);
+    text-shadow:0 2px 12px rgba(245,179,1,.4);
+    letter-spacing:1px;
+  }
+  .sound-overlay .tap-sub{
+    font-size:13px;
+    color:var(--mute);
+  }
+  @keyframes pulse-icon{
+    0%,100%{transform:scale(1);opacity:.8}
+    50%{transform:scale(1.15);opacity:1}
   }
 
   /* brasas de fogo subindo */
@@ -186,6 +227,17 @@
   }
   @keyframes blink{50%{opacity:0}}
 
+  /* indicador de pular */
+  .skip-hint{
+    text-align:center;
+    margin-top:8px;
+    font-size:12px;
+    color:var(--mute);
+    opacity:0;
+    transition:opacity .4s;
+  }
+  .skip-hint.visible{opacity:1}
+
   /* botão de jogo */
   .btn{
     width:100%;
@@ -219,6 +271,26 @@
   .btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--gold-dk), 0 6px 14px rgba(0,0,0,.4)}
   .btn:disabled{filter:grayscale(.6) brightness(.8);cursor:wait}
   .btn[hidden]{display:none}
+
+  /* botão de som toggle */
+  .sound-toggle{
+    position:fixed;
+    top:14px;right:14px;
+    z-index:100;
+    width:40px;height:40px;
+    border:2px solid var(--gold-dk);
+    border-radius:50%;
+    background:rgba(23,18,8,.85);
+    color:var(--gold);
+    font-size:20px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .15s, background .2s;
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+  }
+  .sound-toggle:hover{transform:scale(1.1)}
+  .sound-toggle:active{transform:scale(.95)}
 
   /* formulário */
   form{width:100%;margin-top:18px}
@@ -284,6 +356,16 @@
 </head>
 <body>
 
+  <!-- Overlay para ativar som (necessário em mobile) -->
+  <div class="sound-overlay" id="sound-overlay">
+    <span class="tap-icon">🔊</span>
+    <span class="tap-text">TOQUE PARA COMEÇAR</span>
+    <span class="tap-sub">com áudio ativado</span>
+  </div>
+
+  <!-- Botão de toggle de som -->
+  <button class="sound-toggle" id="sound-toggle" title="Ligar/Desligar som" aria-label="Toggle som">🔊</button>
+
   <div class="stage">
     <img class="logo" src="logo.png" alt="Facção Central">
 
@@ -300,6 +382,7 @@
 Seja bem-vindo à FACÇÃO CENTRAL — FAC1!
 Aqui é clã sério: guerra ativa, doação voando e zero frescura.
 Bora fazer seu alistamento?"></p>
+        <p class="skip-hint" id="skip1">toque no balão para pular ▸</p>
         <button class="btn next" hidden>BORA! ⚔️</button>
       </div>
     </section>
@@ -315,6 +398,7 @@ Bora fazer seu alistamento?"></p>
 🏰 Castelo de guerra: só líder/co-líder doa.
 ❌ Quebrou regra = RUA.
 O regulamento completo chega no grupo do WhatsApp depois."></p>
+        <p class="skip-hint" id="skip2">toque no balão para pular ▸</p>
         <button class="btn next" hidden>ENTENDI 👊</button>
       </div>
     </section>
@@ -375,11 +459,108 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
   <iframe name="gforms-sink" id="gforms-sink" style="display:none"></iframe>
 
   <script>
+    // ==== SISTEMA DE SOM (Web Audio API — sem arquivos externos) ====
+    var audioCtx = null;
+    var soundEnabled = true;
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playNote(freq, duration, type, vol, delay) {
+      if (!audioCtx || !soundEnabled) return;
+      type = type || "square";
+      vol = vol || 0.08;
+      delay = delay || 0;
+      var t = audioCtx.currentTime + delay;
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(vol, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + duration);
+    }
+
+    // Som de digitação — clique mecânico aleatório
+    var typeTickCounter = 0;
+    function playTypeTick() {
+      if (!audioCtx || !soundEnabled) return;
+      typeTickCounter++;
+      if (typeTickCounter % 2 !== 0) return; // a cada 2 caracteres
+      var freq = 800 + Math.random() * 600;
+      playNote(freq, 0.03, "square", 0.04);
+    }
+
+    // Som de transição de cena — "whoosh" ascendente
+    function playTransition() {
+      if (!audioCtx || !soundEnabled) return;
+      var notes = [440, 554, 659, 880];
+      for (var i = 0; i < notes.length; i++) {
+        playNote(notes[i], 0.12, "triangle", 0.1, i * 0.06);
+      }
+    }
+
+    // Som de botão — click satisfatório
+    function playButtonClick() {
+      if (!audioCtx || !soundEnabled) return;
+      playNote(660, 0.06, "square", 0.08);
+      playNote(880, 0.08, "square", 0.06, 0.05);
+    }
+
+    // Som de sucesso / vitória — fanfarra
+    function playSuccess() {
+      if (!audioCtx || !soundEnabled) return;
+      var melody = [523, 659, 784, 1047];
+      for (var i = 0; i < melody.length; i++) {
+        playNote(melody[i], 0.25, "triangle", 0.12, i * 0.15);
+        playNote(melody[i] * 0.5, 0.25, "sine", 0.06, i * 0.15);
+      }
+    }
+
+    // Som de digitação terminada — ding
+    function playTypeDone() {
+      if (!audioCtx || !soundEnabled) return;
+      playNote(1200, 0.15, "sine", 0.08);
+      playNote(1600, 0.2, "sine", 0.06, 0.08);
+    }
+
+    // Toggle som
+    var soundToggle = document.getElementById("sound-toggle");
+    soundToggle.addEventListener("click", function () {
+      soundEnabled = !soundEnabled;
+      soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+      if (soundEnabled) playButtonClick();
+    });
+
+    // ---- Overlay de ativação de som ----
+    var overlay = document.getElementById("sound-overlay");
+    var started = false;
+
+    function startExperience() {
+      if (started) return;
+      started = true;
+      initAudio();
+      overlay.classList.add("hide");
+      playTransition();
+      // Iniciar a digitação da cena 1 após um breve delay
+      setTimeout(function () {
+        typewriter(document.getElementById("cena1"));
+      }, 400);
+    }
+
+    overlay.addEventListener("click", startExperience);
+    overlay.addEventListener("touchstart", startExperience, { passive: true });
+
     // ---- Google Forms (IDs extraídos do formulário oficial) ----
     var FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSfVSGAfpaNo9ycOFQiNC40oo88JGOcm-MA3cfAESZzN8kWAjQ/formResponse";
-    var ENTRY_NICK = "entry.1706055096"; // pergunta "Nome"
-    var ENTRY_CV   = "entry.2044809706"; // pergunta "Tag" (renomeie para "CV" no Google Forms)
-    var ENTRY_ZAP  = "entry.1187565273"; // pergunta "Número de WhatsApp"
+    var ENTRY_NICK = "entry.1706055096";
+    var ENTRY_CV   = "entry.2044809706";
+    var ENTRY_ZAP  = "entry.1187565273";
 
     // brasas de fogo
     var kinds = ["", "fire", "fire", "blood"];
@@ -411,37 +592,77 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
       else if (v.length > 0) this.value = "(" + v;
     });
 
-    // ---- máquina de cenas com efeito de digitação ----
+    // ---- máquina de cenas com efeito de digitação AUTOMÁTICO ----
     var scenes = ["cena1", "cena2", "cena3", "cena4"];
     var dots = document.querySelectorAll("#steps span");
     var typeTimer = null;
+    var currentScene = 0;
+    var isTyping = false;
 
     function typewriter(scene) {
       var p = scene.querySelector(".btext");
       var full = p.getAttribute("data-text");
       var nextBtn = scene.querySelector(".next");
+      var skipHint = scene.querySelector(".skip-hint");
       p.innerHTML = "";
       var cur = document.createElement("span");
       cur.className = "cursor";
       p.appendChild(cur);
-      var i = 0;
+      var charIdx = 0;
       clearInterval(typeTimer);
+      isTyping = true;
+
+      // Mostrar hint de pular após 1.5s
+      if (skipHint) {
+        setTimeout(function () {
+          if (isTyping) skipHint.classList.add("visible");
+        }, 1500);
+      }
 
       function finish() {
+        if (!isTyping) return;
         clearInterval(typeTimer);
+        isTyping = false;
         p.textContent = full;
-        if (nextBtn) nextBtn.hidden = false;
+        if (skipHint) skipHint.classList.remove("visible");
+        playTypeDone();
+        if (nextBtn) {
+          nextBtn.hidden = false;
+          // Animação do botão aparecendo
+          nextBtn.style.animation = "rise .4s cubic-bezier(.2,.9,.3,1.3) both";
+        }
       }
+
       typeTimer = setInterval(function () {
-        if (i >= full.length) { finish(); return; }
-        cur.insertAdjacentText("beforebegin", full.charAt(i));
-        i++;
-      }, 16);
+        if (charIdx >= full.length) { finish(); return; }
+        var ch = full.charAt(charIdx);
+        cur.insertAdjacentText("beforebegin", ch);
+        charIdx++;
+        // Som de digitação
+        if (ch !== " " && ch !== "\n") {
+          playTypeTick();
+        }
+      }, 38); // 38ms = velocidade de digitação visível e confortável
+
       // toque no balão pula a digitação
-      scene.querySelector(".balloon").onclick = finish;
+      scene.querySelector(".balloon").onclick = function () {
+        if (isTyping) {
+          playButtonClick();
+          finish();
+        }
+      };
     }
 
     function showScene(n) {
+      if (n < 0 || n >= scenes.length) return;
+      currentScene = n;
+
+      // Som de transição
+      if (n > 0) playTransition();
+      if (n === 3) {
+        setTimeout(playSuccess, 300);
+      }
+
       scenes.forEach(function (id, idx) {
         var el = document.getElementById(id);
         var on = idx === n;
@@ -455,15 +676,19 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
     }
 
     document.querySelectorAll(".next").forEach(function (btn, idx) {
-      btn.addEventListener("click", function () { showScene(idx + 1); });
+      btn.addEventListener("click", function () {
+        playButtonClick();
+        showScene(idx + 1);
+      });
     });
 
-    typewriter(document.getElementById("cena1"));
+    // NÃO iniciar automaticamente — esperar o overlay ser clicado
 
     // ---- envio: POST via form dinâmico no iframe oculto ----
     var submitted = false;
     document.getElementById("cadastro").addEventListener("submit", function (ev) {
       ev.preventDefault();
+      playButtonClick();
       var btn = document.getElementById("btn-enviar");
       btn.disabled = true;
       btn.textContent = "ENVIANDO...";
