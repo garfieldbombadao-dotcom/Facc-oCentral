@@ -458,6 +458,9 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
   <!-- iframe oculto: recebe a resposta do Google Forms sem sair da página -->
   <iframe name="gforms-sink" id="gforms-sink" style="display:none"></iframe>
 
+  <!-- Música final (WhatsApp Audio) -->
+  <audio id="musica-final" src="musica-final.mpeg" preload="auto"></audio>
+
   <script>
     // ==== SISTEMA DE SOM (Web Audio API — sem arquivos externos) ====
     var audioCtx = null;
@@ -535,6 +538,13 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
       soundEnabled = !soundEnabled;
       soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
       if (soundEnabled) playButtonClick();
+      
+      // Controlar a música se estiver tocando
+      var m = document.getElementById("musica-final");
+      if (m) {
+        if (!soundEnabled) m.pause();
+        else if (currentScene === 3) m.play();
+      }
     });
 
     // ---- Overlay de ativação de som ----
@@ -662,6 +672,13 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
       if (n > 0) playTransition();
       if (n === 3) {
         setTimeout(playSuccess, 300);
+        
+        // Tocar a música no final
+        var m = document.getElementById("musica-final");
+        if (m && soundEnabled) {
+          m.currentTime = 0;
+          m.play();
+        }
       }
 
       scenes.forEach(function (id, idx) {
