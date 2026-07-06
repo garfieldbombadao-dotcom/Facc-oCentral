@@ -602,6 +602,7 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
     function typewriter(scene) {
       var p = scene.querySelector(".btext");
       var full = p.getAttribute("data-text");
+      var fullChars = Array.from(full);
       var nextBtn = scene.querySelector(".next");
       var skipHint = scene.querySelector(".skip-hint");
       p.innerHTML = "";
@@ -634,8 +635,8 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
       }
 
       typeTimer = setInterval(function () {
-        if (charIdx >= full.length) { finish(); return; }
-        var ch = full.charAt(charIdx);
+        if (charIdx >= fullChars.length) { finish(); return; }
+        var ch = fullChars[charIdx];
         cur.insertAdjacentText("beforebegin", ch);
         charIdx++;
         // Som de digitação
@@ -676,7 +677,8 @@ Nos vemos no campo de batalha, Chefe! 🏰⚔️"></p>
     }
 
     document.querySelectorAll(".next").forEach(function (btn, idx) {
-      btn.addEventListener("click", function () {
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation(); // Evita que o clique vaze para o balão e cancele a digitação atual
         playButtonClick();
         showScene(idx + 1);
       });
